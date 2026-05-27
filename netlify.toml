@@ -1,15 +1,11 @@
-# netlify.toml — Netlify configuration for PawShop
-
-[build]
-  publish = "."                        # serve pawshop.html from root
-  functions = "netlify/functions"      # serverless functions directory
+toml[build]
+  publish = "."
+  functions = "netlify/functions"
+  command = "npm install"
 
 [build.environment]
   NODE_VERSION = "18"
 
-# Stripe webhook endpoint — Netlify serves this automatically
-# Register this URL in your Stripe Dashboard → Webhooks:
-# https://your-site.netlify.app/.netlify/functions/stripe-webhook
 [[redirects]]
   from = "/api/create-payment-intent"
   to = "/.netlify/functions/create-payment-intent"
@@ -20,11 +16,9 @@
   to = "/.netlify/functions/stripe-webhook"
   status = 200
 
-# Security headers
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
