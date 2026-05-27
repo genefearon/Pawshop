@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawShop – Premium Pet Food & Supplies | UK Delivery</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #FF6B35; --orange-light: #FF8C5A; --orange-pale: #FFF0EA;
+      --teal: #2A9D8F; --teal-light: #3DBFAF; --teal-pale: #E8F7F5;
+      --dark: #1A1A2E; --mid: #4A4A6A; --light: #F8F9FA;
+      --white: #FFFFFF; --border: #E5E7EB;
+      --shadow: 0 4px 20px rgba(0,0,0,0.08); --shadow-hover: 0 8px 32px rgba(0,0,0,0.14);
+      --radius: 16px; --radius-sm: 8px;
+    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--light); color: var(--dark); line-height: 1.6; }
+    nav { position: sticky; top: 0; z-index: 1000; background: var(--white); border-bottom: 1px solid var(--border); padding: 0 5%; display: flex; align-items: center; justify-content: space-between; height: 70px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .nav-logo { font-size: 1.6rem; font-weight: 800; color: var(--orange); cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    .nav-logo span { color: var(--teal); }
+    .nav-links { display: flex; gap: 8px; list-style: none; }
+    .nav-links a { color: var(--mid); font-weight: 500; padding: 8px 16px; border-radius: var(--radius-sm); transition: all .2s; cursor: pointer; }
+    .nav-links a:hover, .nav-links a.active { background: var(--orange-pale); color: var(--orange); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .search-box { display: flex; align-items: center; background: var(--light); border: 1px solid var(--border); border-radius: 24px; padding: 6px 16px; gap: 8px; }
+    .search-box input { border: none; background: none; outline: none; color: var(--dark); font-size: .9rem; width: 180px; }
+    .cart-btn { background: var(--orange); color: white; border: none; border-radius: 24px; padding: 10px 20px; font-size: .95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background .2s, transform .15s; }
+    .cart-btn:hover { background: var(--orange-light); transform: translateY(-1px); }
+    .cart-count { background: var(--teal); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .page { display: none; } .page.active { display: block; }
+    .hero { background: linear-gradient(135deg, #FF6B35 0%, #F4A261 50%, #2A9D8F 100%); padding: 80px 5% 60px; display: flex; align-items: center; justify-content: space-between; gap: 40px; min-height: 480px; overflow: hidden; position: relative; }
+    .hero::before { content: ''; position: absolute; inset: 0; opacity: .05; background: radial-gradient(circle, white 1px, transparent 1px) 0 0 / 40px 40px; }
+    .hero-text { position: relative; max-width: 540px; }
+    .hero-badge { display: inline-block; background: rgba(255,255,255,0.25); color: white; padding: 6px 16px; border-radius: 24px; font-size: .85rem; font-weight: 600; margin-bottom: 20px; }
+    .hero h1 { font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 900; color: white; line-height: 1.15; margin-bottom: 20px; }
+    .hero p { font-size: 1.1rem; color: rgba(255,255,255,0.9); margin-bottom: 32px; }
+    .hero-btns { display: flex; gap: 16px; flex-wrap: wrap; }
+    .btn-primary { background: white; color: var(--orange); padding: 14px 28px; border-radius: 32px; font-weight: 700; font-size: 1rem; border: none; cursor: pointer; transition: transform .2s, box-shadow .2s; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    .btn-secondary { background: transparent; color: white; padding: 14px 28px; border-radius: 32px; font-weight: 700; font-size: 1rem; border: 2px solid rgba(255,255,255,0.7); cursor: pointer; transition: background .2s; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    .hero-visual { position: relative; font-size: 9rem; line-height: 1; text-align: center; flex-shrink: 0; }
+    .hero-visual .paw { position: absolute; font-size: 3rem; opacity: .35; }
+    .hero-visual .paw:nth-child(1) { top: -20px; right: -10px; }
+    .hero-visual .paw:nth-child(2) { bottom: -10px; left: 0; }
+    .section { padding: 60px 5%; }
+    .section-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
+    .section-sub { color: var(--mid); margin-bottom: 36px; }
+    .categories-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .category-card { background: var(--white); border-radius: var(--radius); padding: 28px 20px; text-align: center; box-shadow: var(--shadow); cursor: pointer; transition: transform .2s, box-shadow .2s; border: 2px solid transparent; }
+    .category-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); border-color: var(--orange); }
+    .category-card .icon { font-size: 3rem; margin-bottom: 12px; display: block; }
+    .category-card h3 { font-weight: 700; margin-bottom: 4px; }
+    .category-card p { font-size: .85rem; color: var(--mid); }
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; }
+    .product-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; transition: transform .2s, box-shadow .2s; }
+    .product-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+    .product-img { width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, var(--orange-pale), var(--teal-pale)); display: flex; align-items: center; justify-content: center; font-size: 5rem; position: relative; }
+    .product-badge { position: absolute; top: 12px; left: 12px; background: var(--orange); color: white; font-size: .75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+    .product-badge.sale { background: #E63946; } .product-badge.new { background: var(--teal); }
+    .supplier-tag { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.55); color: white; font-size: .7rem; padding: 3px 8px; border-radius: 10px; font-weight: 600; }
+    .product-info { padding: 16px; }
+    .product-category { font-size: .75rem; font-weight: 600; color: var(--teal); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .product-name { font-weight: 700; margin-bottom: 6px; }
+    .product-desc { font-size: .85rem; color: var(--mid); margin-bottom: 12px; }
+    .product-footer { display: flex; align-items: center; justify-content: space-between; }
+    .product-price { font-size: 1.2rem; font-weight: 800; color: var(--orange); }
+    .product-price .original { font-size: .85rem; color: var(--mid); text-decoration: line-through; font-weight: 400; margin-right: 4px; }
+    .add-to-cart { background: var(--teal); color: white; border: none; border-radius: 24px; padding: 8px 16px; font-weight: 600; font-size: .85rem; cursor: pointer; transition: background .2s, transform .15s; }
+    .add-to-cart:hover { background: var(--teal-light); transform: scale(1.05); }
+    .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 32px; }
+    .filter-btn { padding: 8px 20px; border-radius: 24px; border: 2px solid var(--border); background: var(--white); font-weight: 600; color: var(--mid); cursor: pointer; transition: all .2s; font-size: .9rem; }
+    .filter-btn:hover, .filter-btn.active { background: var(--orange); border-color: var(--orange); color: white; }
+    /* CART */
+    .cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 2000; opacity: 0; pointer-events: none; transition: opacity .3s; }
+    .cart-overlay.open { opacity: 1; pointer-events: all; }
+    .cart-sidebar { position: fixed; top: 0; right: -440px; width: 420px; height: 100%; background: white; z-index: 2001; display: flex; flex-direction: column; box-shadow: -4px 0 32px rgba(0,0,0,0.15); transition: right .3s cubic-bezier(.4,0,.2,1); max-width: 100vw; }
+    .cart-sidebar.open { right: 0; }
+    .cart-header { padding: 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .cart-header h2 { font-size: 1.3rem; font-weight: 800; }
+    .close-btn { background: var(--light); border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background .2s; }
+    .close-btn:hover { background: var(--border); }
+    /* DISCOUNT PROGRESS */
+    .discount-progress-wrap { padding: 14px 24px; background: var(--light); border-bottom: 1px solid var(--border); }
+    .discount-progress-msg { font-size: .82rem; font-weight: 600; color: var(--dark); margin-bottom: 8px; line-height: 1.4; }
+    .discount-progress-msg .highlight { color: var(--teal); }
+    .discount-progress-msg.unlocked { color: var(--teal); }
+    .progress-track { background: var(--border); border-radius: 8px; height: 8px; overflow: hidden; margin-bottom: 6px; }
+    .progress-fill { height: 100%; border-radius: 8px; transition: width .4s cubic-bezier(.4,0,.2,1); background: linear-gradient(90deg, var(--teal), var(--teal-light)); }
+    .progress-fill.full { background: linear-gradient(90deg, #2A9D8F, #52c41a); }
+    .tier-milestones { display: flex; justify-content: space-between; }
+    .tier-milestone { font-size: .7rem; color: var(--mid); text-align: center; }
+    .tier-milestone.reached { color: var(--teal); font-weight: 700; }
+    .tier-milestone span { display: block; font-size: .65rem; }
+    /* CART ITEMS / FOOTER */
+    .cart-items { flex: 1; overflow-y: auto; padding: 16px 24px; }
+    .cart-empty { text-align: center; padding: 60px 20px; color: var(--mid); }
+    .cart-empty .icon { font-size: 4rem; margin-bottom: 16px; }
+    .cart-item { display: flex; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+    .cart-item-img { width: 70px; height: 70px; border-radius: var(--radius-sm); background: var(--orange-pale); display: flex; align-items: center; justify-content: center; font-size: 2rem; flex-shrink: 0; }
+    .cart-item-info { flex: 1; }
+    .cart-item-name { font-weight: 700; margin-bottom: 2px; font-size: .95rem; }
+    .cart-item-supplier { font-size: .72rem; color: var(--teal); font-weight: 600; margin-bottom: 4px; }
+    .cart-item-price { color: var(--orange); font-weight: 700; }
+    .qty-controls { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .qty-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: var(--light); cursor: pointer; font-size: 1rem; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: background .2s; }
+    .qty-btn:hover { background: var(--border); }
+    .qty-num { font-weight: 700; min-width: 20px; text-align: center; }
+    .remove-btn { background: none; border: none; color: #E63946; cursor: pointer; font-size: 1.2rem; align-self: flex-start; margin-left: auto; padding: 4px; }
+    .cart-footer { padding: 24px; border-top: 1px solid var(--border); }
+    .savings-row { display: flex; justify-content: space-between; align-items: center; background: #E8F7F5; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+    .savings-row .savings-label { font-size: .82rem; font-weight: 700; color: var(--teal); }
+    .savings-row .savings-amount { font-size: .88rem; font-weight: 800; color: var(--teal); }
+    .cart-subtotal { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .tier-badge { display: inline-flex; align-items: center; background: var(--teal); color: white; font-size: .7rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; margin-left: 6px; vertical-align: middle; }
+    .checkout-btn { width: 100%; background: var(--orange); color: white; border: none; border-radius: 32px; padding: 16px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 12px; transition: background .2s, transform .15s; }
+    .checkout-btn:hover { background: var(--orange-light); transform: translateY(-1px); }
+    @keyframes tierPop { 0%{transform:scale(1)} 40%{transform:scale(1.06)} 100%{transform:scale(1)} }
+    .tier-pop { animation: tierPop .35s ease; }
+    /* CHECKOUT MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; border-radius: var(--radius); width: 100%; max-width: 560px; max-height: 95vh; overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.2); margin: auto; }
+    .modal-header { padding: 24px 28px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: white; z-index: 1; }
+    .modal-header h2 { font-size: 1.3rem; font-weight: 800; }
+    .modal-body { padding: 28px; }
+    .form-section { margin-bottom: 24px; }
+    .form-section h3 { font-size: .85rem; font-weight: 700; color: var(--mid); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .form-row { display: flex; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; margin-bottom: 14px; }
+    .form-group label { font-weight: 600; font-size: .9rem; color: var(--mid); }
+    .form-group input, .form-group select { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: .95rem; outline: none; transition: border-color .2s, box-shadow .2s; font-family: inherit; width: 100%; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,107,53,0.15); }
+    .form-group input.error { border-color: #E63946; }
+    #card-element { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; background: white; }
+    .order-summary { background: var(--light); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 20px; }
+    .order-summary-item { display: flex; justify-content: space-between; font-size: .9rem; padding: 4px 0; color: var(--mid); }
+    .order-summary-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+    .order-summary-total { display: flex; justify-content: space-between; font-weight: 800; font-size: 1.1rem; padding-top: 8px; color: var(--dark); }
+    .vat-note { font-size: .75rem; color: var(--mid); text-align: right; margin-top: 4px; }
+    .pay-btn { width: 100%; background: var(--orange); color: white; border: none; border-radius: 32px; padding: 16px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background .2s, transform .15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .pay-btn:hover { background: var(--orange-light); transform: translateY(-1px); }
+    .pay-btn:disabled { background: var(--border); color: var(--mid); cursor: not-allowed; transform: none; }
+    #payment-message { text-align: center; margin-top: 12px; font-size: .9rem; color: var(--mid); min-height: 20px; }
+    #payment-message.error { color: #E63946; }
+    .stripe-notice { color: var(--mid); font-size: .78rem; margin-top: 14px; text-align: center; }
+    .uk-only-badge { display: inline-flex; align-items: center; gap: 5px; background: #003078; color: white; font-size: .75rem; font-weight: 600; padding: 4px 10px; border-radius: 12px; margin-bottom: 16px; }
+    .success-screen { text-align: center; padding: 60px 40px; }
+    .success-screen .big-icon { font-size: 5rem; margin-bottom: 20px; }
+    .success-screen h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 12px; color: var(--teal); }
+    .success-screen p { color: var(--mid); margin-bottom: 12px; }
+    .order-ref { font-family: monospace; background: var(--light); padding: 8px 16px; border-radius: 8px; font-size: 1rem; font-weight: 700; color: var(--dark); display: inline-block; margin: 8px 0 20px; }
+    .promo-banner { background: linear-gradient(90deg, #003078 0%, #0066cc 100%); color: white; text-align: center; padding: 12px; font-weight: 600; font-size: .9rem; display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--dark); color: white; padding: 12px 24px; border-radius: 32px; font-weight: 600; font-size: .9rem; z-index: 9999; transition: transform .3s cubic-bezier(.4,0,.2,1); box-shadow: 0 8px 24px rgba(0,0,0,0.2); white-space: nowrap; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .flow-section { background: var(--teal-pale); padding: 48px 5%; border-top: 1px solid rgba(42,157,143,0.2); }
+    .flow-steps { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; margin-top: 32px; }
+    .flow-step { background: white; border-radius: var(--radius); padding: 20px; text-align: center; width: 160px; box-shadow: var(--shadow); }
+    .flow-step .step-icon { font-size: 2rem; margin-bottom: 8px; }
+    .flow-step .step-label { font-size: .8rem; font-weight: 700; color: var(--dark); }
+    .flow-step .step-sub { font-size: .7rem; color: var(--mid); margin-top: 4px; }
+    .flow-arrow { font-size: 1.5rem; color: var(--teal); padding: 0 8px; flex-shrink: 0; }
+    footer { background: var(--dark); color: rgba(255,255,255,0.7); padding: 48px 5% 24px; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+    .footer-brand .logo { font-size: 1.5rem; font-weight: 800; color: var(--orange); margin-bottom: 12px; }
+    .footer-brand .logo span { color: var(--teal-light); }
+    .footer-brand p { font-size: .9rem; line-height: 1.7; }
+    .footer-col h4 { color: white; font-weight: 700; margin-bottom: 16px; }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 8px; }
+    .footer-col a { color: rgba(255,255,255,0.65); font-size: .9rem; cursor: pointer; }
+    .footer-col a:hover { color: var(--orange); }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; display: flex; justify-content: space-between; font-size: .85rem; flex-wrap: wrap; gap: 12px; }
+    @media (max-width: 900px) {
+      .categories-grid { grid-template-columns: repeat(2, 1fr); }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .hero { flex-direction: column; text-align: center; padding: 50px 5%; }
+      .hero-btns { justify-content: center; }
+      .hero-visual { font-size: 6rem; }
+      .flow-step { width: 130px; padding: 14px; }
+    }
+    @media (max-width: 600px) {
+      .nav-links, .search-box { display: none; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .form-row { flex-direction: column; }
+      .cart-sidebar { width: 100%; right: -100%; }
+      .flow-arrow { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="promo-banner">
+  🇬🇧 UK delivery only &nbsp;|&nbsp; Free shipping over £40 &nbsp;|&nbsp; <strong>NEWPAW15</strong> — 15% off your first order
+</div>
+
+<nav>
+  <div class="nav-logo" onclick="showPage('home')">🐾 Paw<span>Shop</span></div>
+  <ul class="nav-links">
+    <li><a onclick="showPage('home')" id="nav-home" class="active">Home</a></li>
+    <li><a onclick="showPage('shop')" id="nav-shop">Shop All</a></li>
+    <li><a onclick="showPage('shop','dog-food')">Dog Food</a></li>
+    <li><a onclick="showPage('shop','cat-food')">Cat Food</a></li>
+    <li><a onclick="showPage('shop','toys')">Toys</a></li>
+    <li><a onclick="showPage('shop','accessories')">Accessories</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" placeholder="Search products…" oninput="searchProducts(this.value)" />
+    </div>
+    <button class="cart-btn" onclick="openCart()">
+      🛒 Cart <div class="cart-count" id="cart-count">0</div>
+    </button>
+  </div>
+</nav>
+
+<!-- HOME -->
+<div id="page-home" class="page active">
+  <section class="hero">
+    <div class="hero-text">
+      <div class="hero-badge">🇬🇧 UK Dropship — Straight to Your Door</div>
+      <h1>Your Pets Deserve<br/>The Very Best</h1>
+      <p>Premium food, toys & accessories from trusted UK suppliers — fast British delivery.</p>
+      <div class="hero-btns">
+        <button class="btn-primary" onclick="showPage('shop')">Shop Now →</button>
+        <button class="btn-secondary" onclick="showPage('shop','dog-food')">Dog Food</button>
+      </div>
+    </div>
+    <div class="hero-visual">🐶🐱<div class="paw">🐾</div><div class="paw">🐾</div></div>
+  </section>
+
+  <div class="flow-section">
+    <div style="text-align:center;">
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-sub" style="margin-bottom:0">Order with confidence — products ship directly from UK suppliers</p>
+    </div>
+    <div class="flow-steps" style="margin-top:32px;">
+      <div class="flow-step"><div class="step-icon">🛒</div><div class="step-label">You Order</div><div class="step-sub">Browse & add to cart</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="step-icon">🔒</div><div class="step-label">Payment Confirmed</div><div class="step-sub">Secure Stripe payment</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="step-icon">⚡</div><div class="step-label">Auto Order Sent</div><div class="step-sub">Supplier notified instantly</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="step-icon">📦</div><div class="step-label">Supplier Ships</div><div class="step-sub">Direct to your door</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="step-icon">😻</div><div class="step-label">Happy Pet!</div><div class="step-sub">UK delivery 2–4 days</div></div>
+    </div>
+  </div>
+
+  <section class="section">
+    <h2 class="section-title">Shop by Category</h2>
+    <p class="section-sub">All products sourced from trusted UK suppliers</p>
+    <div class="categories-grid">
+      <div class="category-card" onclick="showPage('shop','dog-food')"><span class="icon">🦴</span><h3>Dog Food</h3><p>Dry, wet & treats</p></div>
+      <div class="category-card" onclick="showPage('shop','cat-food')"><span class="icon">🐟</span><h3>Cat Food</h3><p>Gourmet & everyday</p></div>
+      <div class="category-card" onclick="showPage('shop','toys')"><span class="icon">🎾</span><h3>Toys</h3><p>Interactive & chew toys</p></div>
+      <div class="category-card" onclick="showPage('shop','accessories')"><span class="icon">🎀</span><h3>Accessories</h3><p>Collars, beds & more</p></div>
+    </div>
+  </section>
+
+  <section class="section" style="background:var(--orange-pale);padding:60px 5%;">
+    <h2 class="section-title">⭐ Featured Products</h2>
+    <p class="section-sub">Bestsellers — shipped from UK warehouses</p>
+    <div class="products-grid" id="featured-grid"></div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Why PawShop?</h2>
+    <p class="section-sub">Premium UK pet supplies, hassle-free</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
+      <div style="background:white;border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);text-align:center;"><div style="font-size:2rem;margin-bottom:10px;">🇬🇧</div><h3 style="margin-bottom:6px;font-size:1rem;">UK Suppliers Only</h3><p style="color:var(--mid);font-size:.85rem;">All products sourced from verified British suppliers.</p></div>
+      <div style="background:white;border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);text-align:center;"><div style="font-size:2rem;margin-bottom:10px;">🚚</div><h3 style="margin-bottom:6px;font-size:1rem;">Free UK Shipping</h3><p style="color:var(--mid);font-size:.85rem;">Free delivery on orders over £40. 2–4 working days.</p></div>
+      <div style="background:white;border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);text-align:center;"><div style="font-size:2rem;margin-bottom:10px;">⚡</div><h3 style="margin-bottom:6px;font-size:1rem;">Auto Order Dispatch</h3><p style="color:var(--mid);font-size:.85rem;">Orders sent to suppliers the moment payment clears.</p></div>
+      <div style="background:white;border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);text-align:center;"><div style="font-size:2rem;margin-bottom:10px;">💰</div><h3 style="margin-bottom:6px;font-size:1rem;">Spend & Save</h3><p style="color:var(--mid);font-size:.85rem;">Spend more, save more — up to 10% off + free shipping.</p></div>
+    </div>
+  </section>
+</div>
+
+<!-- SHOP -->
+<div id="page-shop" class="page">
+  <section class="section">
+    <h2 class="section-title">🛍️ All Products</h2>
+    <p class="section-sub" id="shop-subtitle">Showing all products</p>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterProducts('all',this)">All</button>
+      <button class="filter-btn" onclick="filterProducts('dog-food',this)">🦴 Dog Food</button>
+      <button class="filter-btn" onclick="filterProducts('cat-food',this)">🐟 Cat Food</button>
+      <button class="filter-btn" onclick="filterProducts('toys',this)">🎾 Toys</button>
+      <button class="filter-btn" onclick="filterProducts('accessories',this)">🎀 Accessories</button>
+    </div>
+    <div class="products-grid" id="shop-grid"></div>
+  </section>
+</div>
+
+<!-- CART SIDEBAR -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-sidebar" id="cart-sidebar">
+  <div class="cart-header">
+    <h2>🛒 Your Cart</h2>
+    <button class="close-btn" onclick="closeCart()">✕</button>
+  </div>
+  <div class="discount-progress-wrap" id="discount-progress-wrap" style="display:none;">
+    <div class="discount-progress-msg" id="discount-msg"></div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="tier-milestones">
+      <div class="tier-milestone" id="m-0"><span>£0</span></div>
+      <div class="tier-milestone" id="m-40"><span>£40</span>Free ship</div>
+      <div class="tier-milestone" id="m-60"><span>£60</span>5% off</div>
+      <div class="tier-milestone" id="m-100"><span>£100</span>10% off</div>
+    </div>
+  </div>
+  <div class="cart-items" id="cart-items"></div>
+  <div class="cart-footer" id="cart-footer" style="display:none;">
+    <div class="savings-row" id="savings-row" style="display:none;">
+      <span class="savings-label">🎉 You're saving</span>
+      <span class="savings-amount" id="savings-amount"></span>
+    </div>
+    <div class="cart-subtotal">
+      <span>Total <span id="tier-badge-slot"></span></span>
+      <span id="cart-subtotal">£0.00</span>
+    </div>
+    <div style="font-size:.78rem;margin-bottom:4px;text-align:right;" id="cart-shipping-note">+ £4.99 delivery · 🇬🇧 UK only</div>
+    <button class="checkout-btn" onclick="openCheckout()">Proceed to Checkout →</button>
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal-overlay" id="checkout-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🔒 Secure Checkout</h2>
+      <button class="close-btn" onclick="closeCheckout()">✕</button>
+    </div>
+    <div class="modal-body" id="checkout-body">
+      <div class="uk-only-badge">🇬🇧 UK Delivery Only</div>
+      <div class="order-summary" id="order-summary"></div>
+      <form id="payment-form" onsubmit="handlePayment(event)" novalidate>
+        <div class="form-section">
+          <h3>Contact Information</h3>
+          <div class="form-row">
+            <div class="form-group"><label>First Name *</label><input type="text" id="fname" placeholder="Jane" required /></div>
+            <div class="form-group"><label>Last Name *</label><input type="text" id="lname" placeholder="Smith" required /></div>
+          </div>
+          <div class="form-group"><label>Email Address *</label><input type="email" id="email" placeholder="jane@example.com" required /></div>
+          <div class="form-group"><label>Phone Number *</label><input type="tel" id="phone" placeholder="07700 900123" required /></div>
+        </div>
+        <div class="form-section">
+          <h3>🇬🇧 UK Shipping Address</h3>
+          <div class="form-group"><label>Address Line 1 *</label><input type="text" id="addr1" placeholder="12 Baker Street" required /></div>
+          <div class="form-group"><label>Address Line 2</label><input type="text" id="addr2" placeholder="Flat 2 (optional)" /></div>
+          <div class="form-row">
+            <div class="form-group"><label>Town / City *</label><input type="text" id="city" placeholder="London" required /></div>
+            <div class="form-group"><label>Postcode *</label><input type="text" id="postcode" placeholder="SW1A 1AA" required style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" /></div>
+          </div>
+          <div class="form-group"><label>Country</label><select id="country"><option value="GB">🇬🇧 United Kingdom</option></select></div>
+        </div>
+        <div class="form-section">
+          <h3>Payment Details</h3>
+          <div class="form-group"><label>Card Information</label><div id="card-element"></div></div>
+        </div>
+        <button type="submit" class="pay-btn" id="pay-btn">🔒 Pay <span id="pay-amount"></span></button>
+        <div id="payment-message"></div>
+        <div class="stripe-notice">🔒 Payments secured by Stripe · Card details never stored · UK business</div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="logo">🐾 Paw<span>Shop</span></div>
+      <p>Premium UK pet food and supplies. All products sourced from trusted British suppliers.</p>
+      <div style="margin-top:16px;font-size:.8rem;color:rgba(255,255,255,.4);">Registered in England & Wales · VAT Reg. No. [YOUR VAT NO.]</div>
+    </div>
+    <div class="footer-col"><h4>Shop</h4><ul>
+      <li><a onclick="showPage('shop','dog-food')">Dog Food</a></li>
+      <li><a onclick="showPage('shop','cat-food')">Cat Food</a></li>
+      <li><a onclick="showPage('shop','toys')">Toys</a></li>
+      <li><a onclick="showPage('shop','accessories')">Accessories</a></li>
+    </ul></div>
+    <div class="footer-col"><h4>Help</h4><ul>
+      <li><a>Delivery Info</a></li><li><a>Returns Policy</a></li><li><a>FAQ</a></li><li><a>Contact Us</a></li>
+    </ul></div>
+    <div class="footer-col"><h4>Company</h4><ul>
+      <li><a>About PawShop</a></li><li><a>Privacy Policy</a></li><li><a>Terms & Conditions</a></li><li><a>Cookie Policy</a></li>
+    </ul></div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 PawShop. All rights reserved. 🇬🇧 UK Only.</span>
+    <span>Made with ❤️ for pets everywhere</span>
+  </div>
+</footer>
+
+<script>
+const SUPPLIERS = {
+  avasam: { name: 'Avasam (UK)', email: 'orders@avasam.com' },
+  jjpets: { name: 'JJ Pet Supplies', email: 'trade@jjpetsupplies.co.uk' }
+};
+
+const PRODUCTS = [
+  { id:1,  name:'Royal Canin Adult (3kg)',        category:'dog-food',    emoji:'🦴', price:32.99, desc:'Complete dry nutrition for adult dogs. Tailored kibble.', badge:'Bestseller', featured:true,  supplier:'avasam' },
+  { id:2,  name:'Purina Pro Plan Puppy (3kg)',     category:'dog-food',    emoji:'🐶', price:28.99, originalPrice:34.99, desc:'Formulated for puppies with real chicken & rice.', badge:'Sale', featured:false, supplier:'avasam' },
+  { id:3,  name:'Burns Original Chicken (6kg)',    category:'dog-food',    emoji:'🐕', price:42.99, desc:'Award-winning Welsh recipe. Natural, hypoallergenic.', badge:'New', featured:true, supplier:'avasam' },
+  { id:4,  name:'Bakers Wet Dog Food (12pk)',      category:'dog-food',    emoji:'🥩', price:18.99, desc:'12-can variety pack. Meaty chunks in rich gravy.', badge:null, featured:false, supplier:'avasam' },
+  { id:5,  name:"Hill's Science Diet Cat (1.6kg)", category:'cat-food',    emoji:'🐟', price:27.99, desc:'Vet recommended for healthy urinary tract & kidneys.', badge:'Bestseller', featured:true, supplier:'avasam' },
+  { id:6,  name:'Purina Felix Pouches (40pk)',     category:'cat-food',    emoji:'😻', price:16.49, originalPrice:20.00, desc:'40 pouches of classic flavours. Made in the UK.', badge:'Sale', featured:false, supplier:'avasam' },
+  { id:7,  name:'James Wellbeloved Adult (1.5kg)', category:'cat-food',    emoji:'🐱', price:34.99, desc:'Hypoallergenic, grain-free. Single animal protein.', badge:'Premium', featured:true, supplier:'avasam' },
+  { id:8,  name:"Dreamies Cat Treats (3x60g)",     category:'cat-food',    emoji:'✨', price:6.99,  desc:'Irresistible crunchy treats. Made in the UK.', badge:null, featured:false, supplier:'avasam' },
+  { id:9,  name:'Kong Classic Chew (Large)',       category:'toys',        emoji:'🔴', price:12.99, desc:'Durable rubber toy. Fill with treats for hours of fun.', badge:'Bestseller', featured:true, supplier:'jjpets' },
+  { id:10, name:'Feather Wand Cat Toy',            category:'toys',        emoji:'🪶', price:8.99,  desc:'Interactive wand. Keeps cats active. Replaceable feathers.', badge:'New', featured:false, supplier:'jjpets' },
+  { id:11, name:'Squeaky Tennis Balls (6pk)',      category:'toys',        emoji:'🎾', price:14.99, desc:'Bright, squeaky, extra-durable. All breeds.', badge:null, featured:false, supplier:'jjpets' },
+  { id:12, name:'Laser & Bell Cat Toy Set',        category:'toys',        emoji:'🔦', price:10.99, originalPrice:13.99, desc:'Laser pointer + jingling bell toy. Great for cats.', badge:'Sale', featured:true, supplier:'jjpets' },
+  { id:13, name:'No-Pull Dog Harness (M)',         category:'accessories', emoji:'🎽', price:22.99, desc:'Step-in, padded harness. Reflective strips for night walks.', badge:'Bestseller', featured:true, supplier:'jjpets' },
+  { id:14, name:'Orthopedic Memory Foam Bed',      category:'accessories', emoji:'🛏️', price:44.99, desc:'Memory foam base. Washable cover. For dogs & cats.', badge:'New', featured:true, supplier:'jjpets' },
+  { id:15, name:'Stainless Steel Bowls (2pk)',     category:'accessories', emoji:'🥣', price:12.99, desc:'Non-slip, dishwasher safe. Two sizes included.', badge:null, featured:false, supplier:'jjpets' },
+  { id:16, name:'Retractable Lead 5m',             category:'accessories', emoji:'🔗', price:17.99, originalPrice:22.99, desc:'5m retractable lead, ergonomic grip, locking brake.', badge:'Sale', featured:false, supplier:'jjpets' },
+];
+
+// ── DISCOUNT TIERS ────────────────────────────────────────────────
+// Adjust thresholds, percentages, and shipping cost here at any time.
+const DISCOUNT_TIERS = [
+  { threshold: 0,   pct: 0,  shipping: 4.99, label: 'Standard',              badge: null },
+  { threshold: 40,  pct: 0,  shipping: 0,    label: 'Free shipping',          badge: 'Free ship' },
+  { threshold: 60,  pct: 5,  shipping: 0,    label: 'Free ship + 5% off',     badge: '5% off' },
+  { threshold: 100, pct: 10, shipping: 0,    label: 'Free ship + 10% off',    badge: '10% off' },
+];
+
+function getDiscount(subtotal) {
+  for (let i = DISCOUNT_TIERS.length - 1; i >= 0; i--) {
+    if (subtotal >= DISCOUNT_TIERS[i].threshold) return DISCOUNT_TIERS[i];
+  }
+  return DISCOUNT_TIERS[0];
+}
+
+function getNextTier(subtotal) {
+  return DISCOUNT_TIERS.find(t => t.threshold > subtotal) || null;
+}
+
+// ── STRIPE ────────────────────────────────────────────────────────
+const STRIPE_PK = 'pk_test_51TbjtEEGs3GwnysKJPyJKMPLkQdb6R6uEfWoNxrB5wd2o4WFXMkhD6ELStDT0Hq1uEUQvpE3rhI0mvdiSKIRki8k00ycYevHpw';
+let stripe, cardElement;
+
+function initStripe() {
+  document.getElementById('card-element').innerHTML = '';
+  try {
+    stripe = Stripe(STRIPE_PK);
+    const elements = stripe.elements({ locale: 'en-GB' });
+    cardElement = elements.create('card', {
+      style: { base: { fontSize: '16px', color: '#1A1A2E', fontFamily: 'Segoe UI, system-ui, sans-serif', '::placeholder': { color: '#9CA3AF' } } },
+      hidePostalCode: true
+    });
+    cardElement.mount('#card-element');
+  } catch(e) {
+    document.getElementById('card-element').innerHTML = '<p style="color:var(--mid);font-size:.85rem;padding:10px;">Add your Stripe publishable key to enable card payments.</p>';
+  }
+}
+
+// ── STATE ─────────────────────────────────────────────────────────
+let cart = [];
+let _prevTierIdx = 0;
+let currentFilter = 'all';
+let currentSearch = '';
+
+// ── NAVIGATION ────────────────────────────────────────────────────
+function showPage(page, filter) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const navEl = document.getElementById('nav-' + (page === 'shop' ? 'shop' : page));
+  if (navEl) navEl.classList.add('active');
+  if (page === 'shop') {
+    currentFilter = filter || 'all';
+    renderShop(currentFilter);
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      const fn = btn.getAttribute('onclick') || '';
+      btn.classList.toggle('active', fn.includes("'" + currentFilter + "'"));
+    });
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── PRODUCTS ──────────────────────────────────────────────────────
+function productCard(p) {
+  const badgeClass = p.badge === 'Sale' ? 'sale' : p.badge === 'New' ? 'new' : '';
+  const sup = SUPPLIERS[p.supplier];
+  return '<div class="product-card">'
+    + '<div class="product-img">'
+    + (p.badge ? '<div class="product-badge ' + badgeClass + '">' + p.badge + '</div>' : '')
+    + p.emoji
+    + '<div class="supplier-tag">Shipped by ' + sup.name + '</div>'
+    + '</div><div class="product-info">'
+    + '<div class="product-category">' + p.category.replace('-', ' ') + '</div>'
+    + '<div class="product-name">' + p.name + '</div>'
+    + '<div class="product-desc">' + p.desc + '</div>'
+    + '<div class="product-footer"><div class="product-price">'
+    + (p.originalPrice ? '<span class="original">£' + p.originalPrice.toFixed(2) + '</span>' : '')
+    + '£' + p.price.toFixed(2)
+    + '</div><button class="add-to-cart" onclick="addToCart(' + p.id + ')">+ Add</button>'
+    + '</div></div></div>';
+}
+
+function renderFeatured() {
+  document.getElementById('featured-grid').innerHTML = PRODUCTS.filter(p => p.featured).map(productCard).join('');
+}
+
+function renderShop(filter) {
+  currentFilter = filter || currentFilter;
+  let products = PRODUCTS;
+  if (currentFilter !== 'all') products = products.filter(p => p.category === currentFilter);
+  if (currentSearch) products = products.filter(p => p.name.toLowerCase().includes(currentSearch) || p.desc.toLowerCase().includes(currentSearch));
+  document.getElementById('shop-grid').innerHTML = products.length
+    ? products.map(productCard).join('')
+    : '<p style="color:var(--mid);padding:40px 0;">No products found.</p>';
+  document.getElementById('shop-subtitle').textContent = 'Showing ' + products.length + ' product' + (products.length !== 1 ? 's' : '') + (currentFilter !== 'all' ? ' in ' + currentFilter.replace('-', ' ') : '');
+}
+
+function filterProducts(cat, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderShop(cat);
+}
+
+function searchProducts(q) {
+  currentSearch = q.toLowerCase();
+  if (!document.getElementById('page-shop').classList.contains('active')) showPage('shop');
+  renderShop(currentFilter);
+}
+
+// ── CART ──────────────────────────────────────────────────────────
+function addToCart(productId) {
+  const product = PRODUCTS.find(p => p.id === productId);
+  const existing = cart.find(c => c.id === productId);
+  if (existing) existing.qty++;
+  else cart.push(Object.assign({}, product, { qty: 1 }));
+  updateCartUI();
+  showToast('✅ ' + product.name + ' added to cart!');
+}
+
+function removeFromCart(id) {
+  cart = cart.filter(c => c.id !== id);
+  updateCartUI();
+}
+
+function changeQty(id, delta) {
+  const item = cart.find(c => c.id === id);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) removeFromCart(id);
+  else updateCartUI();
+}
+
+function getSubtotal() {
+  return cart.reduce(function(s, c) { return s + c.price * c.qty; }, 0);
+}
+
+function updateCartUI() {
+  const totalQty = cart.reduce(function(s, c) { return s + c.qty; }, 0);
+  document.getElementById('cart-count').textContent = totalQty;
+  const itemsEl = document.getElementById('cart-items');
+  const footerEl = document.getElementById('cart-footer');
+  const progressWrap = document.getElementById('discount-progress-wrap');
+
+  if (cart.length === 0) {
+    itemsEl.innerHTML = '<div class="cart-empty"><div class="icon">🛒</div><p style="font-weight:700;margin-bottom:6px;">Your cart is empty</p><p style="font-size:.85rem;">Add some treats for your furry friends!</p></div>';
+    footerEl.style.display = 'none';
+    progressWrap.style.display = 'none';
+    _prevTierIdx = 0;
+    return;
+  }
+
+  itemsEl.innerHTML = cart.map(function(item) {
+    var sup = SUPPLIERS[item.supplier];
+    return '<div class="cart-item">'
+      + '<div class="cart-item-img">' + item.emoji + '</div>'
+      + '<div class="cart-item-info">'
+      + '<div class="cart-item-name">' + item.name + '</div>'
+      + '<div class="cart-item-supplier">Ships from ' + sup.name + '</div>'
+      + '<div class="cart-item-price">£' + (item.price * item.qty).toFixed(2) + '</div>'
+      + '<div class="qty-controls">'
+      + '<button class="qty-btn" onclick="changeQty(' + item.id + ',-1)">−</button>'
+      + '<span class="qty-num">' + item.qty + '</span>'
+      + '<button class="qty-btn" onclick="changeQty(' + item.id + ',1)">+</button>'
+      + '</div></div>'
+      + '<button class="remove-btn" onclick="removeFromCart(' + item.id + ')" title="Remove">🗑️</button>'
+      + '</div>';
+  }).join('');
+
+  var subtotal = getSubtotal();
+  var tier = getDiscount(subtotal);
+  var nextTier = getNextTier(subtotal);
+  var tierIdx = DISCOUNT_TIERS.indexOf(tier);
+  var discountAmt = subtotal * (tier.pct / 100);
+  var discountedTotal = subtotal - discountAmt;
+
+  // Progress bar
+  progressWrap.style.display = 'block';
+  var maxThreshold = DISCOUNT_TIERS[DISCOUNT_TIERS.length - 1].threshold;
+  var pct = Math.min(100, (subtotal / maxThreshold) * 100);
+  var fillEl = document.getElementById('progress-fill');
+  fillEl.style.width = pct.toFixed(1) + '%';
+  fillEl.className = 'progress-fill' + (pct >= 100 ? ' full' : '');
+
+  ['m-0','m-40','m-60','m-100'].forEach(function(id, i) {
+    var el = document.getElementById(id);
+    if (el && DISCOUNT_TIERS[i]) el.className = 'tier-milestone' + (subtotal >= DISCOUNT_TIERS[i].threshold ? ' reached' : '');
+  });
+
+  var msgEl = document.getElementById('discount-msg');
+  if (nextTier) {
+    var needed = (nextTier.threshold - subtotal).toFixed(2);
+    var nextLabel = nextTier.pct > 0 ? nextTier.pct + '% off + free shipping' : 'free shipping';
+    msgEl.className = 'discount-progress-msg';
+    msgEl.innerHTML = 'Spend <span class="highlight">£' + needed + ' more</span> to unlock <strong>' + nextLabel + '</strong>';
+  } else {
+    msgEl.className = 'discount-progress-msg unlocked';
+    msgEl.innerHTML = '🎉 <strong>Best discount unlocked!</strong> Saving ' + tier.pct + '% + free shipping';
+  }
+
+  // Savings row
+  var savingsRow = document.getElementById('savings-row');
+  var savingsAmtEl = document.getElementById('savings-amount');
+  var totalSavings = discountAmt + (tier.shipping === 0 && subtotal > 0 ? 4.99 : 0);
+  if (tier.pct > 0 || (tier.shipping === 0 && subtotal > 0)) {
+    savingsRow.style.display = 'flex';
+    savingsAmtEl.textContent = tier.pct > 0 ? '£' + totalSavings.toFixed(2) : '£4.99 shipping';
+    if (tierIdx > _prevTierIdx) {
+      savingsRow.classList.remove('tier-pop');
+      void savingsRow.offsetWidth;
+      savingsRow.classList.add('tier-pop');
+    }
+  } else {
+    savingsRow.style.display = 'none';
+  }
+
+  document.getElementById('tier-badge-slot').innerHTML = tier.badge ? '<span class="tier-badge">' + tier.badge + '</span>' : '';
+  document.getElementById('cart-subtotal').textContent = '£' + discountedTotal.toFixed(2);
+
+  var shipNote = document.getElementById('cart-shipping-note');
+  shipNote.textContent = tier.shipping === 0 ? '🚚 Free UK delivery · 🇬🇧 UK only' : '+ £' + tier.shipping.toFixed(2) + ' delivery · 🇬🇧 UK only';
+  shipNote.style.color = tier.shipping === 0 ? 'var(--teal)' : 'var(--mid)';
+
+  footerEl.style.display = 'block';
+  _prevTierIdx = tierIdx;
+}
+
+function openCart() {
+  document.getElementById('cart-sidebar').classList.add('open');
+  document.getElementById('cart-overlay').classList.add('open');
+}
+function closeCart() {
+  document.getElementById('cart-sidebar').classList.remove('open');
+  document.getElementById('cart-overlay').classList.remove('open');
+}
+
+// ── CHECKOUT ──────────────────────────────────────────────────────
+function openCheckout() {
+  if (cart.length === 0) return;
+  closeCart();
+  renderOrderSummary();
+  document.getElementById('checkout-modal').classList.add('open');
+  document.getElementById('payment-message').textContent = '';
+  document.getElementById('payment-message').className = '';
+  document.getElementById('pay-btn').disabled = false;
+  initStripe();
+}
+
+function renderOrderSummary() {
+  var subtotal = getSubtotal();
+  var tier = getDiscount(subtotal);
+  var discountAmt = subtotal * (tier.pct / 100);
+  var discountedSubtotal = subtotal - discountAmt;
+  var total = discountedSubtotal + tier.shipping;
+
+  var discountRow = tier.pct > 0
+    ? '<div class="order-summary-item" style="color:#2A9D8F;font-weight:600;"><span>🎉 ' + tier.pct + '% discount (' + tier.label + ')</span><span>−£' + discountAmt.toFixed(2) + '</span></div>'
+    : '';
+
+  document.getElementById('order-summary').innerHTML =
+    cart.map(function(i) { return '<div class="order-summary-item"><span>' + i.emoji + ' ' + i.name + ' x' + i.qty + '</span><span>£' + (i.price*i.qty).toFixed(2) + '</span></div>'; }).join('')
+    + '<hr class="order-summary-divider">'
+    + discountRow
+    + '<div class="order-summary-item"><span>Shipping (UK mainland)</span><span>' + (tier.shipping === 0 ? '🚚 Free' : '£' + tier.shipping.toFixed(2)) + '</span></div>'
+    + '<div class="order-summary-total"><span>Total (inc. VAT)</span><span>£' + total.toFixed(2) + '</span></div>'
+    + '<div class="vat-note">UK VAT (20%) included · UK delivery only</div>';
+
+  document.getElementById('pay-amount').textContent = '£' + total.toFixed(2);
+  window._checkoutTotal = total;
+  window._checkoutTier = tier;
+  window._checkoutDiscount = discountAmt;
+}
+
+function closeCheckout() {
+  document.getElementById('checkout-modal').classList.remove('open');
+}
+
+function isValidUKPostcode(postcode) {
+  return /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i.test(postcode.trim());
+}
+
+function validateCheckoutForm() {
+  var valid = true;
+  ['fname','lname','email','phone','addr1','city','postcode'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el.value.trim()) { el.classList.add('error'); valid = false; }
+    else el.classList.remove('error');
+  });
+  var postcode = document.getElementById('postcode');
+  if (postcode.value.trim() && !isValidUKPostcode(postcode.value)) {
+    postcode.classList.add('error'); valid = false;
+    showToast('⚠️ Please enter a valid UK postcode');
+  }
+  if (!valid) showToast('⚠️ Please fill in all required fields');
+  return valid;
+}
+
+async function handlePayment(e) {
+  e.preventDefault();
+  if (!validateCheckoutForm()) return;
+  var btn = document.getElementById('pay-btn');
+  var msg = document.getElementById('payment-message');
+  btn.disabled = true; btn.textContent = '⏳ Processing…';
+  msg.className = ''; msg.textContent = '';
+  var orderData = buildOrderData();
+
+  if (!stripe || !cardElement || STRIPE_PK.includes('YOUR_')) {
+    msg.textContent = '⚙️ Demo mode — add your Stripe key to go live';
+    setTimeout(function() { showSuccessScreen(orderData, 'DEMO-' + Math.random().toString(36).substr(2,8).toUpperCase()); }, 1800);
+    return;
+  }
+
+  try {
+    var intentRes = await fetch('/.netlify/functions/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: Math.round(window._checkoutTotal * 100),
+        currency: 'gbp',
+        metadata: {
+          customer_name: orderData.customer.name,
+          customer_email: orderData.customer.email,
+          order_items: JSON.stringify(orderData.items.map(function(i) { return { id:i.id, name:i.name, qty:i.qty, price:i.price, supplier:i.supplier }; })),
+          shipping_address: JSON.stringify(orderData.shipping),
+          order_ref: orderData.ref,
+          discount_pct: String(orderData.discount_pct),
+          discount_amt: orderData.discount_amt.toFixed(2),
+          discount_label: orderData.discount_label
+        }
+      })
+    });
+    if (!intentRes.ok) throw new Error('Could not initialise payment. Please try again.');
+    var data = await intentRes.json();
+
+    var result = await stripe.confirmCardPayment(data.clientSecret, {
+      payment_method: {
+        card: cardElement,
+        billing_details: {
+          name: orderData.customer.name, email: orderData.customer.email, phone: orderData.customer.phone,
+          address: { line1: orderData.shipping.line1, line2: orderData.shipping.line2, city: orderData.shipping.city, postal_code: orderData.shipping.postcode, country: 'GB' }
+        }
+      }
+    });
+
+    if (result.error) {
+      msg.className = 'error'; msg.textContent = '❌ ' + result.error.message;
+      btn.disabled = false; btn.innerHTML = '🔒 Pay £' + window._checkoutTotal.toFixed(2);
+    } else if (result.paymentIntent.status === 'succeeded') {
+      showSuccessScreen(orderData, result.paymentIntent.id.slice(-8).toUpperCase());
+    }
+  } catch(err) {
+    msg.className = 'error'; msg.textContent = '❌ ' + (err.message || 'An unexpected error occurred.');
+    btn.disabled = false; btn.innerHTML = '🔒 Pay £' + window._checkoutTotal.toFixed(2);
+  }
+}
+
+function buildOrderData() {
+  var ref = 'PS-' + Date.now().toString(36).toUpperCase();
+  var tier = window._checkoutTier || DISCOUNT_TIERS[0];
+  return {
+    ref: ref,
+    customer: {
+      name: document.getElementById('fname').value.trim() + ' ' + document.getElementById('lname').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      phone: document.getElementById('phone').value.trim()
+    },
+    shipping: {
+      line1: document.getElementById('addr1').value.trim(),
+      line2: document.getElementById('addr2').value.trim(),
+      city: document.getElementById('city').value.trim(),
+      postcode: document.getElementById('postcode').value.trim().toUpperCase(),
+      country: 'GB'
+    },
+    items: cart.map(function(i) { return Object.assign({}, i); }),
+    total: window._checkoutTotal,
+    discount_pct: tier.pct,
+    discount_amt: window._checkoutDiscount || 0,
+    discount_label: tier.label,
+    shipping_cost: tier.shipping
+  };
+}
+
+function showSuccessScreen(order, paymentRef) {
+  cart = []; _prevTierIdx = 0; updateCartUI();
+  var savedAmt = (order.discount_amt || 0) + (order.shipping_cost === 0 ? 4.99 : 0);
+  var savedLine = savedAmt > 0 ? '<p style="font-size:.85rem;color:var(--teal);font-weight:700;margin-bottom:8px;">💰 You saved £' + savedAmt.toFixed(2) + ' on this order!</p>' : '';
+  document.getElementById('checkout-body').innerHTML =
+    '<div class="success-screen">'
+    + '<div class="big-icon">🎉</div>'
+    + '<h2>Order Confirmed!</h2>'
+    + '<p>Thank you, <strong>' + order.customer.name + '</strong>!</p>'
+    + '<div class="order-ref">Order #' + order.ref + ' · Ref: ' + paymentRef + '</div>'
+    + savedLine
+    + '<p style="font-size:.9rem;">Confirmation sent to <strong>' + order.customer.email + '</strong>.<br/>Your order has been automatically dispatched to our UK supplier, shipping directly to:<br/><strong>' + order.shipping.line1 + ', ' + order.shipping.city + ', ' + order.shipping.postcode + '</strong></p>'
+    + '<p style="margin-top:16px;font-size:.85rem;color:var(--teal);font-weight:600;">🇬🇧 Expected UK delivery: 2–4 working days</p><br/>'
+    + '<button style="background:var(--teal);color:white;border:none;cursor:pointer;padding:14px 28px;border-radius:32px;font-weight:700;font-size:1rem;" onclick="closeCheckout();showPage(\'home\')">Continue Shopping</button>'
+    + '</div>';
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2800);
+}
+
+renderFeatured();
+renderShop('all');
+</script>
+</body>
+</html>
